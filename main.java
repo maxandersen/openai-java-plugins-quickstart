@@ -5,6 +5,7 @@
 //DEPS io.quarkus:quarkus-bom:${quarkus.version:3.0.3.Final}@pom
 //DEPS io.quarkus:quarkus-resteasy-reactive
 //DEPS io.quarkus:quarkus-resteasy-reactive-jackson
+//DEPS io.quarkus:quarkus-smallrye-openapi
 
 //FILES application.properties
 
@@ -61,10 +62,11 @@ public class main {
         return Paths.get(".well-known/ai-plugin.json");
     }
 
-    @GET @Path("/openapi.yaml")
+  /*  @GET @Path("/openapi.yaml")
     public java.nio.file.Path openapi_spec() {
         return Paths.get("openapi.yaml");
     }
+    */
     public static void main(String... args) {
         Quarkus.run();
     }
