@@ -8,12 +8,22 @@
 //DEPS io.quarkus:quarkus-smallrye-openapi
 
 //FILES application.properties
+//FILES logo.png
+//FILES ai-plugin.json=.well-known/ai-plugin.json
 
-import java.nio.file.Paths;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.eclipse.microprofile.openapi.annotations.OpenAPIDefinition;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.info.Info;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.jboss.resteasy.reactive.RestPath;
 
 import io.quarkus.runtime.Quarkus;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,52 +31,84 @@ import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Application;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 @ApplicationScoped 
 @Path("/")
-public class main {
+@OpenAPIDefinition(
+  info = 
+  @Info(
+      title = " TODO Plugin",  
+      version = "v1", 
+      description = """
+        A plugin that allows the user to create and manage a TODO list using ChatGPT.
+        If you do not know the user's username, ask them first before making queries to the plugin. 
+        Otherwise, use the username "global".
+        """
+))
+public class main extends Application {
 
     // Keep track of todo's. Does not persist if Java process is restarted.
     final Map<String, List<String>> todos = new ConcurrentHashMap<>();
 
+    record AddTodo(String todo) {}
+
     @POST @Path("/todos/{username}")
-    public void add_todo(String username, String todo) {
+    @Operation(summary = "Add a todo to the list")
+    public void addTodo(
+            @RestPath 
+            @Parameter(description = "The name of the user") String username, 
+            AddTodo todo) {
+
         if (!todos.containsKey(username)) {
             todos.put(username, new ArrayList<>());
         }
-        todos.get(username).add(todo);
+        todos.get(username).add(todo.todo);
     }
+
+    record TodoList(@Schema(description="The list of todos") List<String> todos) {}
 
     @GET @Path("/todos/{username}")
-    public List<String> get_todos(String username) {
-        return todos.getOrDefault(username, new ArrayList<>());
+    @Operation(summary = "Get the list of todos")
+    public TodoList getTodos(
+            @RestPath 
+            @Parameter(description = "The name of the user") 
+            String username) {
+       return new TodoList(todos.getOrDefault(username, new ArrayList<>()));
     }
 
+    record DeleteTodo(@Schema(description="The index of the todo to delete", required=true) int todoIdx) {};
+
     @DELETE @Path("/todos/{username}")
-    public void delete_todo(@PathParam("username") String username, int todoIdx) {
-        if (0 <= todoIdx && todoIdx < todos.getOrDefault(username, new ArrayList<>()).size()) {
-            todos.get(username).remove(todoIdx);
+    @Operation(summary = "Delete a todo from the list")
+    public void deleteTodo(
+                  @RestPath
+                  @Parameter(description = "The name of the user") String username, 
+                            DeleteTodo t) {
+        if (0 <= t.todoIdx && t.todoIdx < todos.getOrDefault(username, new ArrayList<>()).size()) {
+            todos.get(username).remove(t.todoIdx);
         } else {
            // fail silently, it's a simple plugin
         }
     }
 
     @GET @Path("/logo.png")
-    public java.nio.file.Path plugin_logo() {
-        return Paths.get("logo.png");
+    @Operation(hidden = true)
+    public Response pluginLogo() throws IOException {
+        try(InputStream inputStream = getClass().getClassLoader().getResourceAsStream("logo.png")) {
+         return Response.ok(inputStream, "image/png").build();
+      }
     }
 
     @GET @Path("/.well-known/ai-plugin.json")
-    public java.nio.file.Path plugin_manifest() {
-        return Paths.get(".well-known/ai-plugin.json");
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(hidden = true)
+    public InputStream pluginManifest() {
+        return getClass().getClassLoader().getResourceAsStream("ai-plugin.json");
     }
-
-  /*  @GET @Path("/openapi.yaml")
-    public java.nio.file.Path openapi_spec() {
-        return Paths.get("openapi.yaml");
-    }
-    */
     public static void main(String... args) {
         Quarkus.run();
     }

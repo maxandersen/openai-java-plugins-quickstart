@@ -4,9 +4,9 @@ Get a todo list ChatGPT plugin up and running in under 5 minutes using Java. If 
 
 ## About this port
 
-This example is an attempt to make the most direct minimal port of the original python to Java using JBang + Quarkus. 
+This example is using Quarkus to allow having the code for the rest endpoints AND the metadata needed to describe the operations using OpenAPI directly without a seperate file to maintain.
 
-It is NOT the most optimal port, it uses raw file access an is not using any of the OpenAPI features Quarkus has available. Might do that in the future :)
+Furthermore it embeds the resources during build allowing to run the file directly from a url using JBang, i.e. `jbang https://github.com/maxandersen/openai-java-plugins-quickstart/blob/quarkus/main.java`
 
 ## Setup
 
