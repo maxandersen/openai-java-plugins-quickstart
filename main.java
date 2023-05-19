@@ -8,8 +8,11 @@
 //DEPS io.quarkus:quarkus-smallrye-openapi
 
 //FILES application.properties
-//FILES logo.png
-//FILES ai-plugin.json=.well-known/ai-plugin.json
+
+//Mounting these resources into locations where Quarkus will 
+//serve them directly. Removing need to have it handled in code.
+//FILES META-INF/resources/logo.png=logo.png
+//FILES META-INF/.well-knwon/ai-plugin.json=.well-known/ai-plugin.json
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,6 +46,7 @@ import jakarta.ws.rs.core.Response;
   @Info(
       title = " TODO Plugin",  
       version = "v1", 
+      //openappi descriptions chatgpt uses to get context on the API
       description = """
         A plugin that allows the user to create and manage a TODO list using ChatGPT.
         If you do not know the user's username, ask them first before making queries to the plugin. 
@@ -54,13 +58,14 @@ public class main extends Application {
     // Keep track of todo's. Does not persist if Java process is restarted.
     final Map<String, List<String>> todos = new ConcurrentHashMap<>();
 
+    //Using records as OpenAI insist on "objects" schemas rather than just 
+    //straight values.
     record AddTodo(String todo) {}
 
     @POST @Path("/todos/{username}")
     @Operation(summary = "Add a todo to the list")
     public void addTodo(
-            @RestPath 
-            @Parameter(description = "The name of the user") String username, 
+            @RestPath @Parameter(description = "The name of the user") String username, 
             AddTodo todo) {
 
         if (!todos.containsKey(username)) {
@@ -74,8 +79,7 @@ public class main extends Application {
     @GET @Path("/todos/{username}")
     @Operation(summary = "Get the list of todos")
     public TodoList getTodos(
-            @RestPath 
-            @Parameter(description = "The name of the user") 
+            @RestPath @Parameter(description = "The name of the user") 
             String username) {
        return new TodoList(todos.getOrDefault(username, new ArrayList<>()));
     }
@@ -85,29 +89,13 @@ public class main extends Application {
     @DELETE @Path("/todos/{username}")
     @Operation(summary = "Delete a todo from the list")
     public void deleteTodo(
-                  @RestPath
-                  @Parameter(description = "The name of the user") String username, 
-                            DeleteTodo t) {
+                  @RestPath @Parameter(description = "The name of the user") String username, 
+                    DeleteTodo t) {
         if (0 <= t.todoIdx && t.todoIdx < todos.getOrDefault(username, new ArrayList<>()).size()) {
             todos.get(username).remove(t.todoIdx);
         } else {
            // fail silently, it's a simple plugin
         }
-    }
-
-    @GET @Path("/logo.png")
-    @Operation(hidden = true)
-    public Response pluginLogo() throws IOException {
-        try(InputStream inputStream = getClass().getClassLoader().getResourceAsStream("logo.png")) {
-         return Response.ok(inputStream, "image/png").build();
-      }
-    }
-
-    @GET @Path("/.well-known/ai-plugin.json")
-    @Produces(MediaType.APPLICATION_JSON)
-    @Operation(hidden = true)
-    public InputStream pluginManifest() {
-        return getClass().getClassLoader().getResourceAsStream("ai-plugin.json");
     }
     public static void main(String... args) {
         Quarkus.run();
