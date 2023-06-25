@@ -14,6 +14,9 @@
 //FILES META-INF/resources/logo.png=logo.png
 //FILES META-INF/resources/.well-known/ai-plugin.json=.well-known/ai-plugin.json
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -25,9 +28,11 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.info.Info;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestPath;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -39,59 +44,72 @@ import jakarta.ws.rs.core.Application;
 @OpenAPIDefinition(
   info = 
   @Info(
-      title = " TODO Plugin",  
+      title = " IDE Plugin",  
       version = "v1", 
       //openappi descriptions chatgpt uses to get context on the API
       description = """
-        A plugin that allows the user to create and manage a TODO list using ChatGPT.
-        If you do not know the user's username, ask them first before making queries to the plugin. 
-        Otherwise, use the username "global".
+        A plugin that allows the user to list, create, add and update files in his project.
         """
 ))
-public class main extends Application {
+public class main {
 
-    // Keep track of todo's. Does not persist if Java process is restarted.
-    final Map<String, List<String>> todos = new ConcurrentHashMap<>();
+    @Inject
+    Logger log;
+    
+    record FileList(@Schema(description="The list of files recursively found in this directory. Will by default return all files in the root directory.")
+                     List<String> files) {}
 
-    //Using records as OpenAI insist on "objects" schemas rather than just 
-    //straight values.
-    record AddTodo(String todo) {}
+    @GET @Path("/files{directory:.+}")
+    @Operation(summary = "Get the files in a directory")
+    public FileList getFiles(
+            @RestPath @Parameter(description = "The name of the directory relatively to the root of the project. Is a simple string. Use '/' to get the root direc") 
+            String directory) throws IOException {
+                directory = handleDir(directory);
 
-    @POST @Path("/todos/{username}")
-    @Operation(summary = "Add a todo to the list")
-    public void addTodo(
-            @RestPath @Parameter(description = "The name of the user") String username, 
-            AddTodo todo) {
+                log.info("Getting files in directory "+directory);
 
-        if (!todos.containsKey(username)) {
-            todos.put(username, new ArrayList<>());
+                var files = Files.list(Paths.get(directory)).map(p->p.toString()).toList();
+
+                return new FileList(files);
+    }
+
+     record FileContent(@Schema(description="The content of a file.")
+                     String content) {}
+
+    @GET @Path("/read{filename:.+}")
+    @Operation(summary = "Get the content of the file")
+    public FileContent getFile(
+            @RestPath @Parameter(description = "Read the content of a file. The parameter is a single string relative to the project root.") 
+            String filename) throws IOException {
+                filename = handleDir(filename);
+
+                log.info("Getting content of file '"+filename + "'");
+
+                var content = Files.readString(Paths.get(filename));
+                return new FileContent(content);
+    }
+
+    @POST @Path("/update{filename:.+}")
+    @Operation(summary = "Update the content of the file")
+    public void updateFile(
+            @RestPath @Parameter(description = "Update the content of a file. The parameter is a single string relative to the project root.") 
+            String filename, FileContent content) throws IOException {
+                filename = handleDir(filename);
+
+                log.info("Updating content of file '"+filename + "'");
+
+                Files.writeString(Paths.get(filename), content.content);
+    }
+
+    private String handleDir(String directory) {
+        if(directory==null || directory.isBlank()) {
+            directory = "/";
         }
-        todos.get(username).add(todo.todo);
-    }
 
-    record TodoList(@Schema(description="The list of todos") List<String> todos) {}
-
-    @GET @Path("/todos/{username}")
-    @Operation(summary = "Get the list of todos")
-    public TodoList getTodos(
-            @RestPath @Parameter(description = "The name of the user") 
-            String username) {
-                return new TodoList(todos.getOrDefault(username, new ArrayList<>()));
-    }
-
-    record DeleteTodo(@Schema(description="The index of the todo to delete", required=true) int todoIdx) {};
-
-    @DELETE @Path("/todos/{username}")
-    @Operation(summary = "Delete a todo from the list")
-    public void deleteTodo(
-                  @RestPath @Parameter(description = "The name of the user") String username, 
-                    DeleteTodo t) {
-        if (0 <= t.todoIdx && t.todoIdx < todos.getOrDefault(username, new ArrayList<>()).size()) {
-            todos.get(username).remove(t.todoIdx);
-        } else {
-           // fail silently, it's a simple plugin
+        if(directory.startsWith("/")) {
+            directory = directory.substring(1);
         }
+        return directory;
     }
-
 }
 
