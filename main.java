@@ -12,11 +12,10 @@
 //Mounting these resources into locations where Quarkus will 
 //serve them directly. Removing need to have it handled in code.
 //FILES META-INF/resources/logo.png=logo.png
-//FILES META-INF/.well-knwon/ai-plugin.json=.well-known/ai-plugin.json
+//FILES META-INF/resources/.well-known/ai-plugin.json=.well-known/ai-plugin.json
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,16 +27,12 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.jboss.resteasy.reactive.RestPath;
 
-import io.quarkus.runtime.Quarkus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Application;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 
 @ApplicationScoped 
 @Path("/")
@@ -81,7 +76,7 @@ public class main extends Application {
     public TodoList getTodos(
             @RestPath @Parameter(description = "The name of the user") 
             String username) {
-       return new TodoList(todos.getOrDefault(username, new ArrayList<>()));
+                return new TodoList(todos.getOrDefault(username, new ArrayList<>()));
     }
 
     record DeleteTodo(@Schema(description="The index of the todo to delete", required=true) int todoIdx) {};
@@ -96,9 +91,6 @@ public class main extends Application {
         } else {
            // fail silently, it's a simple plugin
         }
-    }
-    public static void main(String... args) {
-        Quarkus.run();
     }
 
 }
