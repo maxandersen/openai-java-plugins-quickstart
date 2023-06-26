@@ -98,6 +98,8 @@ public class main {
 
                 log.info("Updating content of file '"+filename + "'");
 
+                Files.createDirectories(Paths.get(filename).getParent());
+
                 Files.writeString(Paths.get(filename), content.content);
     }
 
