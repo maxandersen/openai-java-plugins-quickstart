@@ -17,11 +17,7 @@
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.microprofile.openapi.annotations.OpenAPIDefinition;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -33,11 +29,9 @@ import org.jboss.resteasy.reactive.RestPath;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.core.Application;
 
 @ApplicationScoped 
 @Path("/")
@@ -62,7 +56,7 @@ public class main {
     @GET @Path("/files{directory:.+}")
     @Operation(summary = "Get the files in a directory")
     public FileList getFiles(
-            @RestPath @Parameter(description = "The name of the directory relatively to the root of the project. Is a simple string. Use '/' to get the root direc") 
+            @RestPath @Parameter(description = "The name of the directory relatively to the root of the project. Is a simple string. Use '/' to get the root directory.") 
             String directory) throws IOException {
                 directory = handleDir(directory);
 
@@ -98,7 +92,7 @@ public class main {
 
                 log.info("Updating content of file '"+filename + "'");
 
-                Files.createDirectories(Paths.get(filename).getParent());
+                Files.createDirectories(Paths.get(filename).toAbsolutePath().getParent());
 
                 Files.writeString(Paths.get(filename), content.content);
     }
